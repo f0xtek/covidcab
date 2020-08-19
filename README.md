@@ -12,3 +12,20 @@ The significant thing about this time period is that is was in the middle of a C
 * Total distance, fares and passengers for every taxi vendor.
 * Average distance, fare and passenger count per taxi vendor.
 * A list of the top 50 journeys sorted in descending order by distance for each taxi vendor.
+
+## Running the script
+
+Create virtualenv & install requirements:
+
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run the script:
+
+```
+$ python3 covidcab.py
+<snip>
+```
