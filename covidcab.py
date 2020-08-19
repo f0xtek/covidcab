@@ -5,8 +5,10 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 import os
 import statistics
+from tabulate import tabulate
 
 DATETIME_FORMAT = '%Y-%m-%d %H:%M:%S'
+PRINT_DATETIME_FORMAT = '%d/%m/%Y %H:%M:%S'
 
 Journey = namedtuple('Journey', 'pickup dropoff passengers distance fare')
 VendorAverages = namedtuple('VendorAverages', 'distance fare passengers')
@@ -29,8 +31,10 @@ def parse_csv(filename):
         for line in csv.DictReader(f):
             try:
                 vendor_id = line['VendorID']
-                pickup_datetime = datetime.strptime(line['tpep_pickup_datetime'], DATETIME_FORMAT)
-                dropoff_datetime = datetime.strptime(line['tpep_dropoff_datetime'], DATETIME_FORMAT)
+                pickup_datetime = datetime.strptime(line['tpep_pickup_datetime'],
+                                                    DATETIME_FORMAT).strftime(PRINT_DATETIME_FORMAT)
+                dropoff_datetime = datetime.strptime(line['tpep_dropoff_datetime'],
+                                                     DATETIME_FORMAT).strftime(PRINT_DATETIME_FORMAT)
                 passenger_count = int(line['passenger_count'])
                 distance = float(line['trip_distance'])
                 fare = float(line['total_amount'])
@@ -77,24 +81,43 @@ def vendor_averages(cab_journeys):
             fare=round(
                     statistics.mean([journey.fare for journey in journeys if type(journey) == Journey]), 2),
             passengers=round(
-                    statistics.mean([journey.passengers for journey in journeys if type(journey) == Journey]), 2)
+                    statistics.mean([journey.passengers for journey in journeys if type(journey) == Journey]), 1)
         )
         cab_journeys[vendor].append(va)
+    return cab_journeys
 
 
 def vendor_totals(cab_journeys):
     for vendor, journeys in cab_journeys.items():
         vt = VendorTotals(distance=round(
-                    statistics.mean([journey.distance for journey in journeys if type(journey) == Journey]), 2))
+                    sum([journey.distance for journey in journeys if type(journey) == Journey]), 2))
         cab_journeys[vendor].append(vt)
+    return cab_journeys
 
 
-def sort_vendor_by_total_distance(cab_journeys):
-    pass
-
-
-def print_results(cab_journeys):
-    pass
+def print_results(total_distance, total_fare, total_passengers, cab_journeys):
+    print(f'In New York during the first week of April 2020, amidst a state-wide lockdown, {total_passengers} people '
+          f'travelled a total of {total_distance} miles by Yellow Cab.')
+    print('A total of ${:.2f} was spent on cab journeys during this time period.'.format(total_fare), end="\n\n")
+    print('Below is a breakdown of the top 50 journeys sorted by distance travelled for each Yellow Cab vendor:',
+          end="\n\n")
+    for vendor, journeys in cab_journeys.items():
+        print(f'Vendor ID: {vendor}', end="\n\n")
+        data = journeys[:-2]
+        headers = ["Pickup", "Dropoff", "Passengers", "Distance", "Fare"]
+        print(tabulate(data, headers=headers, floatfmt=".2f"))
+        for journey in cab_journeys[vendor]:
+            if type(journey) == VendorTotals:
+                print()
+                data = [journey]
+                headers = ["Total Distance (miles)"]
+                print(tabulate(data, headers=headers, floatfmt=".2f"))
+            elif type(journey) == VendorAverages:
+                print()
+                data = [journey]
+                headers = ["Average Distance (miles)", "Average Fare ($)", "Average Passengers"]
+                print(tabulate(data, headers=headers, floatfmt=".2f"))
+        print()
 
 
 def main():
@@ -103,9 +126,9 @@ def main():
     ttl_distance = total_distance(cab_journeys)
     ttl_fares = total_fare(cab_journeys)
     ttl_passengers = total_passengers(cab_journeys)
-    vendor_averages(cab_journeys)
-    vendor_totals(cab_journeys)
-    print(cab_journeys)
+    cab_journeys = vendor_averages(cab_journeys)
+    cab_journeys = vendor_totals(cab_journeys)
+    print_results(ttl_distance, ttl_fares, ttl_passengers, cab_journeys)
 
 
 if __name__ == '__main__':
